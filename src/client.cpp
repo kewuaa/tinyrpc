@@ -14,6 +14,11 @@ struct Client::impl {
     std::unordered_map<Message::ID, asyncio::Event<bool>*> waits;
     std::optional<asyncio::Task<>> read_task { std::nullopt };
 
+    static inline Message::ID generate_message_id() noexcept {
+        static Message::ID id = 0;
+        return ++id;
+    }
+
     ~impl() noexcept {
         if (read_task) {
             read_task->cancel();
@@ -73,12 +78,13 @@ struct Client::impl {
     }
 
     asyncio::Task<Message::ID, const char*> send_request(std::string_view name, std::string_view body) noexcept {
+        auto id = generate_message_id();
         auto header_size = sizeof(VERIFY_FLAG) + sizeof(Message::ID) + name.size()+1 + sizeof(size_t);
         auto body_size = body.size();
         std::string header;
         header.reserve(header_size);
         header.append((char*)(&VERIFY_FLAG), sizeof(VERIFY_FLAG));
-        header.append((char*)(&++id), sizeof(Message::ID));
+        header.append((char*)(&id), sizeof(Message::ID));
         header.append(name); header.push_back('\0');
         header.append((char*)(&body_size), sizeof(size_t));
         auto res = co_await sock.write(header.data(), header.size());
@@ -92,7 +98,7 @@ struct Client::impl {
         }
         co_return (co_await sock.write(body.data(), body.size()))
             .transform(
-                [&body] {
+                [id, &body] {
                     SPDLOG_DEBUG(
                         "send {} bytes header:{}",
                         body.size(),
