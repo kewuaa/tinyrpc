@@ -39,7 +39,7 @@ void register_func(const std::string& name, F&& func) noexcept {
 
 
 template<typename R, typename... Args>
-asyncio::Task<void, const char*> call_func(Client& client, const std::string& name, R& res, Args&&... args) {
+asyncio::Task<void, const char*> call_func(Client& client, std::string_view name, R& res, Args&&... args) {
     std::string data;
     if constexpr (utils::is_proto_args<Args...>) {
         decltype(auto) arg = utils::get_first_arg(args...);

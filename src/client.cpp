@@ -72,8 +72,7 @@ struct Client::impl {
         SPDLOG_INFO("stop read task for fd", sock.fd());
     }
 
-    asyncio::Task<Message::ID, const char*> send_request(const std::string& name, std::string_view body) noexcept {
-        static Message::ID id = 0;
+    asyncio::Task<Message::ID, const char*> send_request(std::string_view name, std::string_view body) noexcept {
         auto header_size = sizeof(VERIFY_FLAG) + sizeof(Message::ID) + name.size()+1 + sizeof(size_t);
         auto body_size = body.size();
         std::string header;
@@ -128,7 +127,7 @@ asyncio::Task<> Client::connect(const char* host, short port) noexcept{
     return _pimpl->connect(host, port);
 }
 
-asyncio::Task<Message, const char*> Client::call(const std::string& name, std::string_view data) noexcept {
+asyncio::Task<Message, const char*> Client::call(std::string_view name, std::string_view data) noexcept {
     auto id = co_await _pimpl->send_request(name, data);
     if (!id) {
         co_return id.error();
