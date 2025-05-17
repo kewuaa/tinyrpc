@@ -39,7 +39,7 @@ void register_func(const std::string& name, F&& func) noexcept {
 
 
 template<typename R, typename... Args>
-asyncio::Task<void, const char*> call_func(Client& client, std::string_view name, R& res, Args&&... args) {
+asyncio::Task<void> call_func(Client& client, std::string_view name, R& res, Args&&... args) {
     std::string data;
     if constexpr (utils::is_proto_args<Args...>) {
         decltype(auto) arg = utils::get_first_arg(args...);
@@ -52,16 +52,12 @@ asyncio::Task<void, const char*> call_func(Client& client, std::string_view name
         data = std::move(s).str();
     }
     auto resp = co_await client.call(name, data);
-    if (!resp) {
-        co_return resp.error();
-    }
-    auto body = resp->body();
+    auto body = resp.body();
     if constexpr (concepts::ProtoType<R>) {
         res.ParseFromArray(body.data(), body.size());
     } else {
         res = msgpack::unpack(body.data(), body.size())->convert();
     }
-    co_return nullptr;
 }
 
 TINYRPC_NS_END

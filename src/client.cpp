@@ -1,6 +1,8 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/bin_to_hex.h>
 
+#include <growable_buffer.hpp>
+
 #include "tinyrpc/client.hpp"
 #include "tinyrpc/message/parser.hpp"
 #include "tinyrpc/utils.hpp"
@@ -10,9 +12,12 @@ TINYRPC_NS_BEGIN()
 
 struct Client::impl {
     asyncio::Socket sock;
+    asyncio::Event<> ev;
+    GrowableBuffer write_buffer;
     std::unordered_map<Message::ID, Message> cache;
     std::unordered_map<Message::ID, asyncio::Event<bool>*> waits;
     std::optional<asyncio::Task<>> read_task { std::nullopt };
+    std::optional<asyncio::Task<>> write_task { std::nullopt };
 
     static inline Message::ID generate_message_id() noexcept {
         static Message::ID id = 0;
@@ -22,6 +27,9 @@ struct Client::impl {
     ~impl() noexcept {
         if (read_task) {
             read_task->cancel();
+        }
+        if (write_task) {
+            write_task->cancel();
         }
     }
 
@@ -37,6 +45,10 @@ struct Client::impl {
             read_task->cancel();
         }
         read_task = read_forever();
+        if (write_task) {
+            write_task->cancel();
+        }
+        write_task = write_forever();
     }
 
     asyncio::Task<> read_forever() noexcept {
@@ -77,36 +89,51 @@ struct Client::impl {
         SPDLOG_INFO("stop read task for fd", sock.fd());
     }
 
-    asyncio::Task<Message::ID, const char*> send_request(std::string_view name, std::string_view body) noexcept {
+    asyncio::Task<> write_forever() noexcept {
+        SPDLOG_INFO("start write task for fd {}", sock.fd());
+        char temp_buffer[TINYRPC_DEFAULT_BUFFER_SIZE];
+        while (true) {
+            if (write_buffer.readable_bytes() == 0) {
+                SPDLOG_DEBUG("empty write bufer, start waiting");
+                co_await ev.wait();
+            }
+            auto nbytes = std::min(TINYRPC_DEFAULT_BUFFER_SIZE, write_buffer.readable_bytes());
+            auto view = write_buffer.read(nbytes);
+            std::copy(view.begin(), view.end(), temp_buffer);
+            auto res = co_await sock.write(temp_buffer, nbytes);
+            if (!res) {
+                SPDLOG_ERROR("error while write to fd {}: {}", sock.fd(), res.error());
+                exit(EXIT_FAILURE);
+            }
+            SPDLOG_DEBUG(
+                "write {} bytes data to fd {}:{}",
+                nbytes,
+                sock.fd(),
+                spdlog::to_hex(std::span(temp_buffer, nbytes))
+            );
+        }
+    }
+
+    Message::ID send_request(std::string_view name, std::string_view body) noexcept {
         auto id = generate_message_id();
         auto header_size = sizeof(VERIFY_FLAG) + sizeof(Message::ID) + name.size()+1 + sizeof(size_t);
         auto body_size = body.size();
-        std::string header;
-        header.reserve(header_size);
-        header.append((char*)(&VERIFY_FLAG), sizeof(VERIFY_FLAG));
-        header.append((char*)(&id), sizeof(Message::ID));
-        header.append(name); header.push_back('\0');
-        header.append((char*)(&body_size), sizeof(size_t));
-        auto res = co_await sock.write(header.data(), header.size());
-        SPDLOG_DEBUG(
-            "send {} bytes header:{}",
-            header_size,
-            spdlog::to_hex(header)
-        );
-        if (!res) {
-            co_return res.error();
+
+        auto header_buffer = write_buffer.malloc(header_size);
+        auto out = header_buffer.data();
+        out = std::copy((char*)&VERIFY_FLAG, ((char*)&VERIFY_FLAG+sizeof(VERIFY_FLAG)), header_buffer.data());
+        out = std::copy((char*)&id, (char*)&id+sizeof(Message::ID), out);
+        out = std::copy(name.begin(), name.end(), out);
+        *out = '\0'; ++out;
+        out = std::copy((char*)&body_size, (char*)&body_size+sizeof(size_t), out);
+        assert(out-header_buffer.data() == header_size);
+
+        write_buffer.write(body);
+
+        if (!ev.is_set()) {
+            ev.set();
         }
-        co_return (co_await sock.write(body.data(), body.size()))
-            .transform(
-                [id, &body] {
-                    SPDLOG_DEBUG(
-                        "send {} bytes header:{}",
-                        body.size(),
-                        spdlog::to_hex(body)
-                    );
-                    return id;
-                }
-            );
+        return id;
     }
 };
 
@@ -133,23 +160,20 @@ asyncio::Task<> Client::connect(const char* host, short port) noexcept{
     return _pimpl->connect(host, port);
 }
 
-asyncio::Task<Message, const char*> Client::call(std::string_view name, std::string_view data) noexcept {
-    auto id = co_await _pimpl->send_request(name, data);
-    if (!id) {
-        co_return id.error();
-    }
-    if (!_pimpl->cache.contains(*id)) {
-        SPDLOG_DEBUG("wait for message {}", *id);
+asyncio::Task<Message> Client::call(std::string_view name, std::string_view data) noexcept {
+    auto id = _pimpl->send_request(name, data);
+    if (!_pimpl->cache.contains(id)) {
+        SPDLOG_DEBUG("wait for message {}", id);
         asyncio::Event<bool> ev;
-        _pimpl->waits[*id] = &ev;
+        _pimpl->waits[id] = &ev;
         auto terminated = co_await ev.wait();
-        _pimpl->waits.erase(*id);
+        _pimpl->waits.erase(id);
         if (terminated && *terminated) {
             exit(EXIT_FAILURE);
         }
     }
-    auto resp = std::move(_pimpl->cache[*id]);
-    _pimpl->cache.erase(*id);
+    auto resp = std::move(_pimpl->cache[id]);
+    _pimpl->cache.erase(id);
     co_return std::move(resp);
 }
 
