@@ -39,24 +39,30 @@ void register_func(const std::string& name, F&& func) noexcept {
 
 
 template<typename R, typename... Args>
-asyncio::Task<void> call_func(Client& client, std::string_view name, R& res, Args&&... args) {
+asyncio::Task<R> call_func(Client& client, std::string_view name, Args&&... args) {
     std::string data;
-    if constexpr (utils::is_proto_args<Args...>) {
-        decltype(auto) arg = utils::get_first_arg(args...);
-        arg.SerializeToString(&data);
-    } else {
-        std::stringstream s;
-        std::tuple<std::decay_t<Args>...> args_ { std::forward<Args>(args)... };
-        msgpack::pack(s, args_);
-        s.seekg(0);
-        data = std::move(s).str();
+    if constexpr (sizeof...(Args) > 0) {
+        if constexpr (utils::is_proto_args<Args...>) {
+            decltype(auto) arg = utils::get_first_arg(args...);
+            arg.SerializeToString(&data);
+        } else {
+            std::stringstream s;
+            std::tuple<std::decay_t<Args>...> args_ { std::forward<Args>(args)... };
+            msgpack::pack(s, args_);
+            s.seekg(0);
+            data = std::move(s).str();
+        }
     }
     auto resp = co_await client.call(name, data);
     auto body = resp.body();
-    if constexpr (concepts::ProtoType<R>) {
-        res.ParseFromArray(body.data(), body.size());
-    } else {
-        res = msgpack::unpack(body.data(), body.size())->convert();
+    if constexpr (!std::is_void_v<R>) {
+        R res;
+        if constexpr (concepts::ProtoType<R>) {
+            res.ParseFromArray(body.data(), body.size());
+        } else {
+            res = msgpack::unpack(body.data(), body.size())->convert();
+        }
+        co_return std::move(res);
     }
 }
 
