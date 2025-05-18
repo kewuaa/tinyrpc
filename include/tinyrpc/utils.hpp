@@ -39,15 +39,13 @@ constexpr decltype(auto) get_first_arg(Arg&& arg, Args&&... args) noexcept {
 
 template<typename... Args>
 struct proto_arg {
-    static constexpr bool value = sizeof...(Args) == 1
-        && concepts::ProtoType<std::decay_t<typename first_arg<Args...>::type>>;
+    static constexpr bool value = concepts::ProtoType<std::decay_t<typename first_arg<Args...>::type>>;
 };
 
 
 template<typename... Args>
 struct proto_arg<std::tuple<Args...>> {
-    static constexpr bool value = sizeof...(Args) == 1
-        && concepts::ProtoType<std::decay_t<typename first_arg<Args...>::type>>;
+    static constexpr bool value = concepts::ProtoType<std::decay_t<typename first_arg<Args...>::type>>;
 };
 
 
