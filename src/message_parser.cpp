@@ -21,6 +21,9 @@ struct Parser::impl {
     State state { State::Verify };
     std::string flag_buffer {};
     Message msg {};
+    Handle handle { nullptr };
+
+    impl(Handle&& handle): handle(std::exchange(handle, nullptr)) {}
 
     inline int16_t flag() const noexcept {
         return *(int16_t*)flag_buffer.data();
@@ -31,7 +34,14 @@ struct Parser::impl {
         return flag_buffer.size() == sizeof(VERIFY_FLAG);
     }
 
-    void process(const char* data, size_t size, Handle&& handle) noexcept {
+    void trigger_handle() noexcept {
+        handle(std::exchange(msg, {}));
+        SPDLOG_DEBUG("successfully handle message");
+        flag_buffer.clear();
+        state = State::Verify;
+    }
+
+    void process(const char* data, size_t size) noexcept {
         int pos = 0;
         while (pos < size) {
             switch (state) {
@@ -75,6 +85,9 @@ struct Parser::impl {
                         if (msg.fill_body_size(data[pos])) {
                             state = State::Body;
                             SPDLOG_DEBUG("body size: {}", msg.body_size());
+                            if (msg.body_size() == 0) {
+                                trigger_handle();
+                            }
                             break;
                         }
                     }
@@ -84,10 +97,7 @@ struct Parser::impl {
                     for (; pos < size; ++pos) {
                         if (msg.fill_body(data[pos])) {
                             SPDLOG_DEBUG("successfully load message body");
-                            handle(std::exchange(msg, {}));
-                            SPDLOG_DEBUG("successfully handle message");
-                            flag_buffer.clear();
-                            state = State::Verify;
+                            trigger_handle();
                             break;
                         }
                     }
@@ -100,7 +110,7 @@ struct Parser::impl {
 };
 
 
-Parser::Parser() noexcept: _pimpl(new impl()) {
+Parser::Parser(Handle&& handle) noexcept: _pimpl(new impl(std::exchange(handle, nullptr))) {
     //
 }
 
@@ -118,8 +128,8 @@ Parser& Parser::operator=(Parser&& p) noexcept {
     return *this;
 }
 
-void Parser::process(const char* data, size_t size, Handle&& handle) noexcept {
-    _pimpl->process(data, size, std::move(handle));
+void Parser::process(const char* data, size_t size) noexcept {
+    _pimpl->process(data, size);
 }
 
 TINYRPC_NS_END

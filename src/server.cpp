@@ -58,7 +58,18 @@ struct Server::impl {
         char buffer[TINYRPC_DEFAULT_BUFFER_SIZE];
         asyncio::Socket sock(fd);
         GrowableBuffer write_buffer;
-        message::Parser message_parser;
+        message::Parser message_parser(
+            [this, &write_buffer](Message&& msg) {
+                auto view = write_buffer.malloc(msg.header().size());
+                auto size = write_buffer.readable_bytes();
+                auto func = funcs.find(msg.func_name());
+                if (func != funcs.end()) {
+                    func->second(msg.body(), write_buffer);
+                }
+                msg.body_size() = write_buffer.readable_bytes() - size;
+                std::copy(msg.header().begin(), msg.header().end(), view.data());
+            }
+        );
         asyncio::Event<bool> ev;
         write_forever(sock, ev, write_buffer);
         while (true) {
@@ -72,20 +83,7 @@ struct Server::impl {
                 nbytes,
                 spdlog::to_hex(std::span(buffer, (size_t)nbytes))
             );
-            message_parser.process(
-                buffer,
-                nbytes,
-                [this, &write_buffer](Message&& msg) {
-                    auto view = write_buffer.malloc(msg.header().size());
-                    auto size = write_buffer.readable_bytes();
-                    auto func = funcs.find(msg.func_name());
-                    if (func != funcs.end()) {
-                        func->second(msg.body(), write_buffer);
-                    }
-                    msg.body_size() = write_buffer.readable_bytes() - size;
-                    std::copy(msg.header().begin(), msg.header().end(), view.data());
-                }
-            );
+            message_parser.process(buffer, nbytes);
             if (!ev.is_set()) {
                 ev.set();
             }

@@ -12,13 +12,13 @@ using Handle = std::function<void(Message&&)>;
 
 class TINYRPC_EXPORT Parser {
 public:
-    Parser() noexcept;
+    Parser(Handle&& handle) noexcept;
     ~Parser() noexcept;
     Parser(Parser&) = delete;
     Parser(Parser&&) noexcept;
     Parser& operator=(Parser&) = delete;
     Parser& operator=(Parser&&) noexcept;
-    void process(const char* data, size_t size, Handle&& handle) noexcept;
+    void process(const char* data, size_t size) noexcept;
 private:
     struct impl;
     impl* _pimpl;

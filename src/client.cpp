@@ -53,7 +53,17 @@ struct Client::impl {
 
     asyncio::Task<> read_forever() noexcept {
         char temp_buffer[TINYRPC_DEFAULT_BUFFER_SIZE];
-        message::Parser message_parser;
+        message::Parser message_parser(
+            [this](Message&& msg) {
+                auto id = msg.id();
+                SPDLOG_DEBUG("save message {} to cache", id);
+                cache[id] = std::move(msg);
+                if (waits.contains(id)) {
+                    SPDLOG_DEBUG("wake up coroutine to consume message {}", id);
+                    waits[id]->set();
+                }
+            }
+        );
         while (true) {
             auto res = co_await sock.read(temp_buffer, TINYRPC_DEFAULT_BUFFER_SIZE);
             if (!res) {
@@ -66,19 +76,7 @@ struct Client::impl {
                 nbytes,
                 spdlog::to_hex(std::span(temp_buffer, (size_t)nbytes))
             );
-            message_parser.process(
-                temp_buffer,
-                *res,
-                [this](Message&& msg) {
-                    auto id = msg.id();
-                    SPDLOG_DEBUG("save message {} to cache", id);
-                    cache[id] = std::move(msg);
-                    if (waits.contains(id)) {
-                        SPDLOG_DEBUG("wake up coroutine to consume message {}", id);
-                        waits[id]->set();
-                    }
-                }
-            );
+            message_parser.process(temp_buffer, *res);
         }
         // notify all coroutine that are waiting for message
         for (auto [_, ev] : waits) {
