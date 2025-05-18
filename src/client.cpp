@@ -128,7 +128,7 @@ struct Client::impl {
         out = std::copy((char*)&body_size, (char*)&body_size+sizeof(size_t), out);
         assert(out-header_buffer.data() == header_size);
 
-        write_buffer.write(body);
+        if (!body.empty()) write_buffer.write(body);
 
         if (!ev.is_set()) {
             ev.set();
