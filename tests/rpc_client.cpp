@@ -2,6 +2,7 @@
 
 # include <asyncio.hpp>
 
+#include "tests/test_rpc.pb.h"
 #include "tinyrpc.hpp"
 
 
@@ -15,6 +16,12 @@ ASYNCIO_NS::Task<> add() {
     co_await TINYRPC_NS::call_func<void>(c, "hello");
     std::string name = "kewuaa";
     co_await TINYRPC_NS::call_func<void>(c, "hello_to", name);
+    test_rpc::Msg msg;
+    msg.set_query("query body");
+    msg.set_page_number(999);
+    co_await TINYRPC_NS::call_func<void>(c, "test_proto", msg);
+    msg = co_await TINYRPC_NS::call_func<test_rpc::Msg>(c, "return_proto");
+    std::cout << msg.page_number() << std::endl;
 }
 
 
