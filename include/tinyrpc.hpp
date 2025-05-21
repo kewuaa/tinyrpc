@@ -34,7 +34,7 @@ void register_func(const std::string& name, F&& func) noexcept {
         } else {
             if constexpr (std::is_void_v<return_type>) {
                 if constexpr (utils::is_proto_args<args_type>) {
-                    decltype(std::get<0>(*(args_type*)nullptr)) arg;
+                    std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
                     arg.ParseFromArray(buffer.data(), buffer.size());
                     f(std::move(arg));
                 } else {
@@ -45,7 +45,7 @@ void register_func(const std::string& name, F&& func) noexcept {
             } else {
                 return_type res;
                 if constexpr (utils::is_proto_args<args_type>) {
-                    decltype(std::get<0>(*(args_type*)nullptr)) arg;
+                    std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
                     arg.ParseFromArray(buffer.data(), buffer.size());
                     res = f(std::move(arg));
                 } else {
