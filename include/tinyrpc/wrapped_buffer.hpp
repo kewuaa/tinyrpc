@@ -6,6 +6,7 @@
 
 #include <growable_buffer.hpp>
 
+#include "tinyrpc_config.hpp"
 #include "../tinyrpc_ns.hpp"
 
 
@@ -25,9 +26,9 @@ public:
 
 #ifdef __HAS_GOOGLE_PROTOBUF
     inline bool Next(void** data, int* size) override {
-        auto view = _buffer.malloc(*size);
+        auto view = _buffer.malloc(TINYRPC_DEFAULT_BUFFER_SIZE);
         *data = view.data();
-        *size = view.size();
+        *size = TINYRPC_DEFAULT_BUFFER_SIZE;
         _count += view.size();
         return true;
     }
