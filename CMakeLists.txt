@@ -31,7 +31,6 @@ endif()
 
 include(cmake/CPM.cmake)
 include(GenerateExportHeader)
-include(GenerateExportHeader)
 
 find_package(spdlog REQUIRED)
 
