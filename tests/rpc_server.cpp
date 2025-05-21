@@ -32,5 +32,5 @@ int main() {
     TINYRPC_NS::register_func("get_value", get_value);
     TINYRPC_NS::register_func("hello", hello);
     TINYRPC_NS::register_func("hello_to", hello_to);
-    kwa::asyncio::run(server.run());
+    ASYNCIO_NS::run(server.run());
 }
