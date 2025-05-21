@@ -12,7 +12,7 @@ set(BUILD_TESTS CACHE BOOL ON "if to build tests")
 
 set(TINYRPC_ENABLE_PROTOBUF TRUE CACHE BOOL "if to enable protobuf")
 set(TINYRPC_DEFAULT_BUFFER_SIZE 1024 CACHE STRING "default buffer size")
-set(TINYRPC_VERIFY_FLAG "0xabab")
+set(TINYRPC_VERIFY_FLAG "0xabab" CACHE STRING "verify flag for message")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
