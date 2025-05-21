@@ -1,7 +1,5 @@
 #pragma once
-#if __has_include("msgpack.hpp")
 #include <msgpack.hpp>
-#endif
 
 #include "tinyrpc_ns.hpp"
 #include "tinyrpc/utils.hpp"

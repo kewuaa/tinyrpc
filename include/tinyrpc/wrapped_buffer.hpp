@@ -1,6 +1,5 @@
 #pragma once
-#if __has_include("google/protobuf/io/zero_copy_stream_impl.h")
-#define __HAS_GOOGLE_PROTOBUF
+#if TINYRPC_ENABLE_PROTOBUF
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #endif
 
@@ -13,7 +12,7 @@
 TINYRPC_NS_BEGIN()
 
 class WrappedBuffer
-#ifdef __HAS_GOOGLE_PROTOBUF
+#ifdef TINYRPC_ENABLE_PROTOBUF
 final: public google::protobuf::io::ZeroCopyOutputStream
 #endif
 {
@@ -24,7 +23,7 @@ public:
     WrappedBuffer& operator=(WrappedBuffer&) = delete;
     WrappedBuffer& operator=(WrappedBuffer&&) = delete;
 
-#ifdef __HAS_GOOGLE_PROTOBUF
+#ifdef TINYRPC_ENABLE_PROTOBUF
     inline bool Next(void** data, int* size) override {
         auto view = _buffer.malloc(TINYRPC_DEFAULT_BUFFER_SIZE);
         *data = view.data();
@@ -48,7 +47,7 @@ public:
     }
 private:
     GrowableBuffer& _buffer;
-#ifdef __HAS_GOOGLE_PROTOBUF
+#ifdef TINYRPC_ENABLE_PROTOBUF
     int64_t _count = 0;
 #endif
 };

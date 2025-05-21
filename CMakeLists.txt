@@ -10,8 +10,8 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 set(BUILD_TESTS CACHE BOOL ON "if to build tests")
 
+set(TINYRPC_ENABLE_PROTOBUF TRUE CACHE BOOL "if to enable protobuf")
 set(TINYRPC_DEFAULT_BUFFER_SIZE 1024 CACHE STRING "default buffer size")
-
 set(TINYRPC_VERIFY_FLAG "0xabab")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -33,6 +33,9 @@ include(cmake/CPM.cmake)
 include(GenerateExportHeader)
 
 find_package(spdlog REQUIRED)
+if (TINYRPC_ENABLE_PROTOBUF)
+    find_package(protobuf REQUIRED)
+endif()
 
 CPMAddPackage(
     NAME asyncio
@@ -46,6 +49,7 @@ CPMAddPackage(
     GIT_TAG master
     OPTIONS "BUILD_TESTS OFF"
 )
+CPMAddPackage("gh:msgpack/msgpack-c#cpp-7.0.0")
 
 configure_file(
     include/config.hpp.in
@@ -78,6 +82,7 @@ target_link_libraries(
         growable_buffer
         asyncio
         spdlog::spdlog
+        msgpack-cxx
 )
 
 add_library(${PROJECT_NAME}_client)
@@ -101,7 +106,24 @@ target_link_libraries(
         growable_buffer
         asyncio
         spdlog::spdlog
+        msgpack-cxx
 )
+
+if (TINYRPC_ENABLE_PROTOBUF)
+    add_compile_definitions(TINYRPC_ENABLE_PROTOBUF)
+    target_link_libraries(
+        ${PROJECT_NAME}_server
+        PUBLIC
+            protobuf::libprotoc
+            protobuf::libprotobuf
+    )
+    target_link_libraries(
+        ${PROJECT_NAME}_client
+        PUBLIC
+            protobuf::libprotoc
+            protobuf::libprotobuf
+    )
+endif()
 
 if (BUILD_TESTS)
     add_subdirectory(tests)
