@@ -72,7 +72,8 @@ asyncio::Task<R> call_func(Client& client, std::string_view name, Args&&... args
     if constexpr (sizeof...(Args) > 0) {
         if constexpr (utils::is_proto_args<Args...>) {
             decltype(auto) arg = utils::get_first_arg(args...);
-            arg.SerializeToString(&data);
+            google::protobuf::io::StringOutputStream buf(&data);
+            arg.SerializeToZeroCopyStream(&buf);
         } else {
             std::stringstream s;
             std::tuple<std::decay_t<Args>...> args_ { std::forward<Args>(args)... };
