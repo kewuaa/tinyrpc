@@ -22,6 +22,11 @@ struct function_traits<R (*)(Args...)> {
 
 
 template<typename R, typename... Args>
+struct function_traits<R (*)(Args...) noexcept>:
+    function_traits<R (*)(Args...)> {};
+
+
+template<typename R, typename... Args>
 struct function_traits<std::function<R(Args...)>>:
     function_traits<R (*)(Args...)> {};
 
