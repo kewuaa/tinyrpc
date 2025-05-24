@@ -3,12 +3,13 @@
 #include <growable_buffer.hpp>
 
 #include "tinyrpc_export.hpp"
+#include "./message.hpp"
 #include "../tinyrpc_ns.hpp"
 
 
 TINYRPC_NS_BEGIN()
 
-using Function = std::function<void(std::string_view, GrowableBuffer&)>;
+using Function = std::function<void(std::mutex&, Message&&, GrowableBuffer&)>;
 
 class TINYRPC_EXPORT Server {
 public:

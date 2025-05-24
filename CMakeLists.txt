@@ -13,6 +13,7 @@ set(BUILD_TESTS CACHE BOOL ON "if to build tests")
 set(TINYRPC_ENABLE_PROTOBUF TRUE CACHE BOOL "if to enable protobuf")
 set(TINYRPC_DEFAULT_BUFFER_SIZE 1024 CACHE STRING "default buffer size")
 set(TINYRPC_VERIFY_FLAG "0xabab" CACHE STRING "verify flag for message")
+set(TINYRPC_THREAD_POOL_SIZE 4 CACHE STRING "thread pool size")
 
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -46,6 +47,12 @@ CPMAddPackage(
 CPMAddPackage(
     NAME growable_buffer
     GIT_REPOSITORY "https://github.com/kewuaa/growable_buffer.git"
+    GIT_TAG master
+    OPTIONS "BUILD_TESTS OFF"
+)
+CPMAddPackage(
+    NAME tiny_thread_pool
+    GIT_REPOSITORY "https://github.com/kewuaa/tiny_thread_pool.git"
     GIT_TAG master
     OPTIONS "BUILD_TESTS OFF"
 )
@@ -83,6 +90,7 @@ target_link_libraries(
         asyncio
         spdlog::spdlog
         msgpack-cxx
+        tiny_thread_pool
 )
 
 add_library(${PROJECT_NAME}_client)

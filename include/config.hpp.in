@@ -5,3 +5,4 @@
 
 constexpr inline int16_t VERIFY_FLAG = ${TINYRPC_VERIFY_FLAG};
 constexpr inline size_t TINYRPC_DEFAULT_BUFFER_SIZE = ${TINYRPC_DEFAULT_BUFFER_SIZE};
+constexpr inline int TINYRPC_THREAD_POOL_SIZE = ${TINYRPC_THREAD_POOL_SIZE};
