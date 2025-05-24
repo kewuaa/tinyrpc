@@ -21,9 +21,7 @@ struct Parser::impl {
     State state { State::Verify };
     std::string flag_buffer {};
     Message msg {};
-    Handle handle { nullptr };
-
-    impl(Handle&& handle): handle(std::exchange(handle, nullptr)) {}
+    std::vector<Message> msgs {};
 
     inline int16_t flag() const noexcept {
         return *(int16_t*)flag_buffer.data();
@@ -35,13 +33,13 @@ struct Parser::impl {
     }
 
     void trigger_handle() noexcept {
-        handle(std::exchange(msg, {}));
+        msgs.push_back(std::exchange(msg, {}));
         SPDLOG_DEBUG("successfully handle message");
         flag_buffer.clear();
         state = State::Verify;
     }
 
-    void process(const char* data, size_t size) noexcept {
+    std::vector<Message> process(const char* data, size_t size) noexcept {
         int pos = 0;
         while (pos < size) {
             switch (state) {
@@ -106,13 +104,13 @@ struct Parser::impl {
             }
             ++pos;
         }
+        return std::exchange(msgs, {});
     }
 };
 
 
-Parser::Parser(Handle&& handle) noexcept: _pimpl(new impl(std::exchange(handle, nullptr))) {
-    //
-}
+Parser::Parser() noexcept: _pimpl(new impl()) {}
+
 
 Parser::~Parser() noexcept {
     utils::free_and_null(_pimpl);
@@ -128,8 +126,8 @@ Parser& Parser::operator=(Parser&& p) noexcept {
     return *this;
 }
 
-void Parser::process(const char* data, size_t size) noexcept {
-    _pimpl->process(data, size);
+std::vector<Message> Parser::process(const char* data, size_t size) noexcept {
+    return _pimpl->process(data, size);
 }
 
 TINYRPC_NS_END
