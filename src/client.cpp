@@ -143,8 +143,8 @@ Client::Client() noexcept: _pimpl(new impl()) {
     //
 }
 
-Client::Client(Client&& c) noexcept {
-    *this = std::move(c);
+Client::Client(Client&& c) noexcept: _pimpl(std::exchange(c._pimpl, nullptr)) {
+    //
 }
 
 Client::~Client() noexcept {

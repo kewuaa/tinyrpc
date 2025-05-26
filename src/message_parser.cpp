@@ -116,8 +116,8 @@ Parser::~Parser() noexcept {
     utils::free_and_null(_pimpl);
 }
 
-Parser::Parser(Parser&& p) noexcept {
-    *this = std::move(p);
+Parser::Parser(Parser&& p) noexcept: _pimpl(std::exchange(p._pimpl, nullptr)) {
+    //
 }
 
 Parser& Parser::operator=(Parser&& p) noexcept {
