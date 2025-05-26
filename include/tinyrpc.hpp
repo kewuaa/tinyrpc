@@ -16,29 +16,19 @@ void register_func(const std::string& name, F&& func) noexcept {
     using return_type = traits::return_type;
     using args_type = traits::args_type;
     auto& server = Server::get();
-    server.register_func(name, [f = std::forward<F>(func)](std::mutex& mtx, Message&& msg, GrowableBuffer& out) {
+    server.register_func(name, [f = std::forward<F>(func)](Message&& msg, GrowableBuffer& out) {
         auto buffer = msg.body();
         if constexpr (std::tuple_size_v<args_type> == 0) {
             if constexpr (std::is_void_v<return_type>) {
                 f();
-                // write to out buffer with lock
-                msg.body_size() = 0;
-                std::lock_guard<std::mutex> lock { mtx };
-                out.write(msg.header());
             } else {
                 auto res = f();
-                // write to out buffer with lock
-                std::lock_guard<std::mutex> lock { mtx };
-                auto view = out.malloc(msg.header().size());
-                auto size = out.readable_bytes();
                 WrappedBuffer buf(out);
                 if constexpr (concepts::ProtoType<return_type>) {
                     res.SerializeToZeroCopyStream(&buf);
                 } else {
                     msgpack::pack(buf, res);
                 }
-                msg.body_size() = out.readable_bytes() - size;
-                std::copy(msg.header().begin(), msg.header().end(), view.data());
             }
         } else {
             if constexpr (std::is_void_v<return_type>) {
@@ -51,10 +41,6 @@ void register_func(const std::string& name, F&& func) noexcept {
                     msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
                     utils::expand_tuple_call(f, std::move(args));
                 }
-                // write to out buffer with lock
-                msg.body_size() = 0;
-                std::lock_guard<std::mutex> lock { mtx };
-                out.write(msg.header());
             } else {
                 return_type res;
                 if constexpr (utils::is_proto_args<args_type>) {
@@ -66,18 +52,12 @@ void register_func(const std::string& name, F&& func) noexcept {
                     msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
                     res = utils::expand_tuple_call(f, std::move(args));
                 }
-                // write to out buffer with lock
-                std::lock_guard<std::mutex> lock { mtx };
-                auto view = out.malloc(msg.header().size());
-                auto size = out.readable_bytes();
                 WrappedBuffer buf(out);
                 if constexpr (concepts::ProtoType<return_type>) {
                     res.SerializeToZeroCopyStream(&buf);
                 } else {
                     msgpack::pack(buf, res);
                 }
-                msg.body_size() = out.readable_bytes() - size;
-                std::copy(msg.header().begin(), msg.header().end(), view.data());
             }
         }
     });

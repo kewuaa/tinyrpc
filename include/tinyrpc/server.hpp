@@ -9,7 +9,7 @@
 
 TINYRPC_NS_BEGIN()
 
-using Function = std::function<void(std::mutex&, Message&&, GrowableBuffer&)>;
+using Function = std::function<void(Message&&, GrowableBuffer&)>;
 
 class TINYRPC_EXPORT Server {
 public:

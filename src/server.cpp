@@ -2,7 +2,6 @@
 #include <spdlog/fmt/bin_to_hex.h>
 
 #include <growable_buffer.hpp>
-#include <tiny_thread_pool.hpp>
 
 #include "tinyrpc/server.hpp"
 #include "tinyrpc/message/parser.hpp"
@@ -11,8 +10,6 @@
 TINYRPC_NS_BEGIN()
 
 struct Server::impl {
-    std::mutex mtx;
-    TinyThreadPool pool { TINYRPC_THREAD_POOL_SIZE, std::chrono::seconds(60) };
     asyncio::Socket sock {};
     std::unordered_map<std::string, Function> funcs {};
 
@@ -57,19 +54,15 @@ struct Server::impl {
         SPDLOG_INFO("stop write task for fd {}", sock.fd());
     }
 
-    asyncio::Task<> handle_message(Message msg, GrowableBuffer& write_buffer, asyncio::Event<bool>& ev) noexcept {
+    void handle_message(Message msg, GrowableBuffer& write_buffer, asyncio::Event<bool>& ev) noexcept {
+        auto view = write_buffer.malloc(msg.header().size());
+        auto size = write_buffer.readable_bytes();
         auto func = funcs.find(msg.func_name());
         if (func != funcs.end()) {
-            // func->second(mtx, std::move(msg), write_buffer);
-            auto& loop = asyncio::EventLoop::get();
-            auto fut = loop.run_in_thread(pool, [this, msg = std::move(msg), &f = func->second, &write_buffer] mutable {
-                f(mtx, std::move(msg), write_buffer);
-            });
-            co_await *fut;
-        } else {
-            msg.body_size() = 0;
-            write_buffer.write(msg.header());
+            func->second(std::move(msg), write_buffer);
         }
+        msg.body_size() = write_buffer.readable_bytes() - size;
+        std::copy(msg.header().begin(), msg.header().end(), view.data());
         if (!ev.is_set()) {
             ev.set();
         }

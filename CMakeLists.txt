@@ -50,12 +50,6 @@ CPMAddPackage(
     GIT_TAG master
     OPTIONS "BUILD_TESTS OFF"
 )
-CPMAddPackage(
-    NAME tiny_thread_pool
-    GIT_REPOSITORY "https://github.com/kewuaa/tiny_thread_pool.git"
-    GIT_TAG master
-    OPTIONS "BUILD_TESTS OFF"
-)
 CPMAddPackage("gh:msgpack/msgpack-c#cpp-7.0.0")
 
 configure_file(
@@ -90,7 +84,6 @@ target_link_libraries(
         asyncio
         spdlog::spdlog
         msgpack-cxx
-        tiny_thread_pool
 )
 
 add_library(${PROJECT_NAME}_client)
