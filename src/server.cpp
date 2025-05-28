@@ -12,6 +12,7 @@ TINYRPC_NS_BEGIN()
 struct Server::impl {
     asyncio::Socket sock {};
     std::unordered_map<std::string, Function> funcs {};
+    std::unordered_map<std::string, AFunction> afuncs {};
 
     inline void register_func(const std::string& name, Function&& func) noexcept {
         if (funcs.contains(name)) {
@@ -20,6 +21,15 @@ struct Server::impl {
             SPDLOG_INFO("register function {}", name);
         }
         funcs[name] = std::move(func);
+    }
+
+    inline void register_afunc(const std::string& name, AFunction&& afunc) noexcept {
+        if (afuncs.contains(name)) {
+            SPDLOG_INFO("update async function {}", name);
+        } else {
+            SPDLOG_INFO("register async function {}", name);
+        }
+        afuncs[name] = std::move(afunc);
     }
 
     asyncio::Task<> write_forever(
@@ -54,12 +64,13 @@ struct Server::impl {
         SPDLOG_INFO("stop write task for fd {}", sock.fd());
     }
 
-    void handle_message(Message msg, GrowableBuffer& write_buffer, asyncio::Event<bool>& ev) noexcept {
+    asyncio::Task<> handle_message(Message msg, GrowableBuffer& write_buffer, asyncio::Event<bool>& ev) noexcept {
         auto view = write_buffer.malloc(msg.header().size());
         auto size = write_buffer.readable_bytes();
-        auto func = funcs.find(msg.func_name());
-        if (func != funcs.end()) {
-            func->second(std::move(msg), write_buffer);
+        if (funcs.contains(msg.func_name())) {
+            funcs[msg.func_name()](std::move(msg), write_buffer);
+        } else if (afuncs.contains(msg.func_name())) {
+            co_await afuncs[msg.func_name()](std::move(msg), write_buffer);
         }
         msg.body_size() = write_buffer.readable_bytes() - size;
         std::copy(msg.header().begin(), msg.header().end(), view.data());
@@ -126,6 +137,10 @@ Server& Server::get() noexcept {
 
 void Server::register_func(const std::string& name, Function&& func) noexcept {
     _pimpl->register_func(name, std::move(func));
+}
+
+void Server::register_afunc(const std::string& name, AFunction&& afunc) noexcept {
+    _pimpl->register_afunc(name, std::move(afunc));
 }
 
 void Server::init(const char* host, short port, int max_listen_num) noexcept {

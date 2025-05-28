@@ -16,51 +16,100 @@ void register_func(const std::string& name, F&& func) noexcept {
     using return_type = traits::return_type;
     using args_type = traits::args_type;
     auto& server = Server::get();
-    server.register_func(name, [f = std::forward<F>(func)](Message&& msg, GrowableBuffer& out) {
-        auto buffer = msg.body();
-        if constexpr (std::tuple_size_v<args_type> == 0) {
-            if constexpr (std::is_void_v<return_type>) {
-                f();
-            } else {
-                auto res = f();
-                WrappedBuffer buf(out);
-                if constexpr (concepts::ProtoType<return_type>) {
-                    res.SerializeToZeroCopyStream(&buf);
+    if constexpr (utils::is_async_task_v<return_type>) {
+        using return_type = return_type::result_type;
+        server.register_afunc(name, [f = std::forward<F>(func)](Message&& msg, GrowableBuffer& out) -> ASYNCIO_NS::Task<> {
+            auto buffer = msg.body();
+            if constexpr (std::tuple_size_v<args_type> == 0) {
+                if constexpr (std::is_void_v<return_type>) {
+                    co_await f();
                 } else {
-                    msgpack::pack(buf, res);
-                }
-            }
-        } else {
-            if constexpr (std::is_void_v<return_type>) {
-                if constexpr (utils::is_proto_args<args_type>) {
-                    std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
-                    arg.ParseFromArray(buffer.data(), buffer.size());
-                    f(std::move(arg));
-                } else {
-                    args_type args;
-                    msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
-                    utils::expand_tuple_call(f, std::move(args));
+                    auto res = co_await f();
+                    WrappedBuffer buf(out);
+                    if constexpr (concepts::ProtoType<return_type>) {
+                        res.SerializeToZeroCopyStream(&buf);
+                    } else {
+                        msgpack::pack(buf, res);
+                    }
                 }
             } else {
-                return_type res;
-                if constexpr (utils::is_proto_args<args_type>) {
-                    std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
-                    arg.ParseFromArray(buffer.data(), buffer.size());
-                    res = f(std::move(arg));
+                if constexpr (std::is_void_v<return_type>) {
+                    if constexpr (utils::is_proto_args<args_type>) {
+                        std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
+                        arg.ParseFromArray(buffer.data(), buffer.size());
+                        co_await f(std::move(arg));
+                    } else {
+                        args_type args;
+                        msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
+                        co_await utils::expand_tuple_call(f, std::move(args));
+                    }
                 } else {
-                    args_type args;
-                    msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
-                    res = utils::expand_tuple_call(f, std::move(args));
-                }
-                WrappedBuffer buf(out);
-                if constexpr (concepts::ProtoType<return_type>) {
-                    res.SerializeToZeroCopyStream(&buf);
-                } else {
-                    msgpack::pack(buf, res);
+                    return_type res;
+                    if constexpr (utils::is_proto_args<args_type>) {
+                        std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
+                        arg.ParseFromArray(buffer.data(), buffer.size());
+                        res = co_await f(std::move(arg));
+                    } else {
+                        args_type args;
+                        msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
+                        res = co_await utils::expand_tuple_call(f, std::move(args));
+                    }
+                    WrappedBuffer buf(out);
+                    if constexpr (concepts::ProtoType<return_type>) {
+                        res.SerializeToZeroCopyStream(&buf);
+                    } else {
+                        msgpack::pack(buf, res);
+                    }
                 }
             }
-        }
-    });
+        });
+    } else {
+        server.register_func(name, [f = std::forward<F>(func)](Message&& msg, GrowableBuffer& out) {
+            auto buffer = msg.body();
+            if constexpr (std::tuple_size_v<args_type> == 0) {
+                if constexpr (std::is_void_v<return_type>) {
+                    f();
+                } else {
+                    auto res = f();
+                    WrappedBuffer buf(out);
+                    if constexpr (concepts::ProtoType<return_type>) {
+                        res.SerializeToZeroCopyStream(&buf);
+                    } else {
+                        msgpack::pack(buf, res);
+                    }
+                }
+            } else {
+                if constexpr (std::is_void_v<return_type>) {
+                    if constexpr (utils::is_proto_args<args_type>) {
+                        std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
+                        arg.ParseFromArray(buffer.data(), buffer.size());
+                        f(std::move(arg));
+                    } else {
+                        args_type args;
+                        msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
+                        utils::expand_tuple_call(f, std::move(args));
+                    }
+                } else {
+                    return_type res;
+                    if constexpr (utils::is_proto_args<args_type>) {
+                        std::decay_t<decltype(std::get<0>(*(args_type*)nullptr))> arg;
+                        arg.ParseFromArray(buffer.data(), buffer.size());
+                        res = f(std::move(arg));
+                    } else {
+                        args_type args;
+                        msgpack::unpack(buffer.data(), buffer.size()).get().convert(args);
+                        res = utils::expand_tuple_call(f, std::move(args));
+                    }
+                    WrappedBuffer buf(out);
+                    if constexpr (concepts::ProtoType<return_type>) {
+                        res.SerializeToZeroCopyStream(&buf);
+                    } else {
+                        msgpack::pack(buf, res);
+                    }
+                }
+            }
+        });
+    }
 }
 
 

@@ -10,6 +10,7 @@
 TINYRPC_NS_BEGIN()
 
 using Function = std::function<void(Message&&, GrowableBuffer&)>;
+using AFunction = std::function<ASYNCIO_NS::Task<>(Message&&, GrowableBuffer&)>;
 
 class TINYRPC_EXPORT Server {
 public:
@@ -21,6 +22,7 @@ public:
     void init(const char* host, short port, int max_listen_num) noexcept;
     asyncio::Task<> run() noexcept;
     void register_func(const std::string& name, Function&& func) noexcept;
+    void register_afunc(const std::string& name, AFunction&& afunc) noexcept;
 private:
     struct impl;
     std::unique_ptr<impl> _pimpl;

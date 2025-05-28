@@ -36,6 +36,27 @@ test_rpc::Msg return_proto() {
 }
 
 
+ASYNCIO_NS::Task<> test_async() {
+    std::cout << "sleep 1000" << std::endl;
+    co_await ASYNCIO_NS::sleep<1000>();
+    std::cout << "sleep done" << std::endl;
+}
+
+
+ASYNCIO_NS::Task<int> test_async_return() {
+    std::cout << "sleep 1000" << std::endl;
+    co_await ASYNCIO_NS::sleep<1000>();
+    co_return 999;
+}
+
+
+ASYNCIO_NS::Task<> async_hello_to(std::string name) {
+    std::cout << "sleep 1000" << std::endl;
+    co_await ASYNCIO_NS::sleep<1000>();
+    std::cout << "hello " << name << std::endl;
+}
+
+
 int main() {
 #if _DEBUG
     spdlog::set_level(spdlog::level::debug);
@@ -48,5 +69,8 @@ int main() {
     TINYRPC_NS::register_func("hello_to", hello_to);
     TINYRPC_NS::register_func("test_proto", test_proto);
     TINYRPC_NS::register_func("return_proto", return_proto);
+    TINYRPC_NS::register_func("test_async", test_async);
+    TINYRPC_NS::register_func("test_async_return", test_async_return);
+    TINYRPC_NS::register_func("async_hello_to", async_hello_to);
     ASYNCIO_NS::run(server.run());
 }

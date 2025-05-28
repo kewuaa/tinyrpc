@@ -22,6 +22,10 @@ ASYNCIO_NS::Task<> add() {
     co_await TINYRPC_NS::call_func<void>(c, "test_proto", msg);
     msg = co_await TINYRPC_NS::call_func<test_rpc::Msg>(c, "return_proto");
     std::cout << msg.page_number() << std::endl;
+    co_await TINYRPC_NS::call_func<void>(c, "test_async");
+    value = co_await TINYRPC_NS::call_func<int>(c, "test_async_return");
+    std::cout << value << std::endl;
+    co_await TINYRPC_NS::call_func<void>(c, "async_hello_to", name);
 }
 
 

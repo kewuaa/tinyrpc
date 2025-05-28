@@ -54,6 +54,22 @@ struct proto_arg<std::tuple<Args...>> {
 };
 
 
+template<typename T>
+struct is_async_task {
+    static constexpr bool value = false;
+};
+
+
+template<typename R, typename E>
+struct is_async_task<ASYNCIO_NS::Task<R, E>> {
+    static constexpr bool value = true;
+};
+
+
+template<typename T>
+constexpr bool is_async_task_v = is_async_task<T>::value;
+
+
 template<typename... Args>
 constexpr auto is_proto_args = proto_arg<Args...>::value;
 
