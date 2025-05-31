@@ -14,19 +14,18 @@ using AFunction = std::function<ASYNCIO_NS::Task<>(Message&&, GrowableBuffer&)>;
 
 class TINYRPC_EXPORT Server {
 public:
+    Server() noexcept;
     Server(Server&) = delete;
-    Server(Server&&) = delete;
+    Server(Server&&) noexcept;
     Server& operator=(Server&) = delete;
-    Server& operator=(Server&&) = delete;
-    static Server& get() noexcept;
+    Server& operator=(Server&&) noexcept;
     void init(const char* host, short port, int max_listen_num) noexcept;
     asyncio::Task<> run() noexcept;
     void register_func(const std::string& name, Function&& func) noexcept;
     void register_afunc(const std::string& name, AFunction&& afunc) noexcept;
 private:
     struct impl;
-    std::unique_ptr<impl> _pimpl;
-    Server() noexcept;
+    impl* _pimpl;
 };
 
 TINYRPC_NS_END

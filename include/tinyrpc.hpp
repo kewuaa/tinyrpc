@@ -11,11 +11,10 @@
 TINYRPC_NS_BEGIN()
 
 template<typename F>
-void register_func(const std::string& name, F&& func) noexcept {
+void register_func(Server& server, const std::string& name, F&& func) noexcept {
     using traits = utils::function_traits<std::decay_t<F>>;
     using return_type = traits::return_type;
     using args_type = traits::args_type;
-    auto& server = Server::get();
     if constexpr (utils::is_async_task_v<return_type>) {
         using return_type = return_type::result_type;
         server.register_afunc(name, [f = std::forward<F>(func)](Message&& msg, GrowableBuffer& out) -> ASYNCIO_NS::Task<> {

@@ -3,6 +3,7 @@
 
 #include <growable_buffer.hpp>
 
+#include "tinyrpc/utils.hpp"
 #include "tinyrpc/server.hpp"
 #include "tinyrpc/message/parser.hpp"
 
@@ -128,11 +129,14 @@ struct Server::impl {
 };
 
 
-Server::Server() noexcept: _pimpl(std::make_unique<impl>()) {}
+Server::Server() noexcept: _pimpl(new impl()) {}
 
-Server& Server::get() noexcept {
-    static Server server;
-    return server;
+Server::Server(Server&& server) noexcept: _pimpl(std::exchange(server._pimpl, nullptr)) {}
+
+Server& Server::operator=(Server&& server) noexcept {
+    utils::free_and_null(_pimpl);
+    _pimpl = std::exchange(server._pimpl, nullptr);
+    return *this;
 }
 
 void Server::register_func(const std::string& name, Function&& func) noexcept {

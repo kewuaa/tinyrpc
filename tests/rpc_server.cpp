@@ -61,16 +61,16 @@ int main() {
 #if _DEBUG
     spdlog::set_level(spdlog::level::debug);
 #endif
-    auto& server = TINYRPC_NS::Server::get();
+    TINYRPC_NS::Server server;
     server.init("127.0.0.1", 12345, 1024);
-    TINYRPC_NS::register_func("add", add);
-    TINYRPC_NS::register_func("get_value", get_value);
-    TINYRPC_NS::register_func("hello", hello);
-    TINYRPC_NS::register_func("hello_to", hello_to);
-    TINYRPC_NS::register_func("test_proto", test_proto);
-    TINYRPC_NS::register_func("return_proto", return_proto);
-    TINYRPC_NS::register_func("test_async", test_async);
-    TINYRPC_NS::register_func("test_async_return", test_async_return);
-    TINYRPC_NS::register_func("async_hello_to", async_hello_to);
+    TINYRPC_NS::register_func(server, "add", add);
+    TINYRPC_NS::register_func(server, "get_value", get_value);
+    TINYRPC_NS::register_func(server, "hello", hello);
+    TINYRPC_NS::register_func(server, "hello_to", hello_to);
+    TINYRPC_NS::register_func(server, "test_proto", test_proto);
+    TINYRPC_NS::register_func(server, "return_proto", return_proto);
+    TINYRPC_NS::register_func(server, "test_async", test_async);
+    TINYRPC_NS::register_func(server, "test_async_return", test_async_return);
+    TINYRPC_NS::register_func(server, "async_hello_to", async_hello_to);
     ASYNCIO_NS::run(server.run());
 }
