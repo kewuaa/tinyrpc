@@ -162,7 +162,7 @@ asyncio::Task<bool> Client::connect(const char* host, short port) noexcept{
     return _pimpl->connect(host, port);
 }
 
-asyncio::Task<Message> Client::call(std::string_view name, std::string_view data) noexcept {
+asyncio::Task<Message, std::nullptr_t> Client::call(std::string_view name, std::string_view data) noexcept {
     auto id = _pimpl->send_request(name, data);
     if (!_pimpl->cache.contains(id)) {
         SPDLOG_DEBUG("wait for message {}", id);
@@ -171,7 +171,7 @@ asyncio::Task<Message> Client::call(std::string_view name, std::string_view data
         auto terminated = co_await ev.wait();
         _pimpl->waits.erase(id);
         if (terminated && *terminated) {
-            exit(EXIT_FAILURE);
+            co_return nullptr;
         }
     }
     auto resp = std::move(_pimpl->cache[id]);
