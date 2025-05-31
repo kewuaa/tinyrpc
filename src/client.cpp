@@ -33,11 +33,11 @@ struct Client::impl {
         }
     }
 
-    asyncio::Task<> connect(const char* host, short port) noexcept {
+    asyncio::Task<bool> connect(const char* host, short port) noexcept {
         auto res = co_await sock.connect(host, port);
         if (res == -1) {
             std::perror(std::format("({})failed to connect to {}:{}", errno, host, port).c_str());
-            exit(EXIT_FAILURE);
+            co_return false;
         }
         SPDLOG_INFO("successfully connect to {}:{}", host, port);
 
@@ -49,6 +49,7 @@ struct Client::impl {
             write_task->cancel();
         }
         write_task = write_forever();
+        co_return true;
     }
 
     void handle_message(Message&& msg) noexcept {
@@ -157,7 +158,7 @@ Client& Client::operator=(Client&& c) noexcept {
     return *this;
 }
 
-asyncio::Task<> Client::connect(const char* host, short port) noexcept{
+asyncio::Task<bool> Client::connect(const char* host, short port) noexcept{
     return _pimpl->connect(host, port);
 }
 

@@ -16,7 +16,7 @@ public:
     ~Client() noexcept;
     Client& operator=(Client&) = delete;
     Client& operator=(Client&&) noexcept;
-    asyncio::Task<> connect(const char* host, short port) noexcept;
+    asyncio::Task<bool> connect(const char* host, short port) noexcept;
     asyncio::Task<Message> call(std::string_view name, std::string_view data) noexcept;
 private:
     struct impl;
