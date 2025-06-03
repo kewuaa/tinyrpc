@@ -89,6 +89,7 @@ struct Client::impl {
             }
         }
         SPDLOG_INFO("stop read task for fd", sock.fd());
+        read_task.reset();
     }
 
     asyncio::Task<> write_forever() noexcept {
@@ -114,6 +115,7 @@ struct Client::impl {
                 spdlog::to_hex(std::span(temp_buffer, nbytes))
             );
         }
+        write_task.reset();
     }
 
     Message::ID send_request(std::string_view name, std::string_view body) noexcept {
