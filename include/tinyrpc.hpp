@@ -138,6 +138,8 @@ asyncio::Task<R, const char*> call_func(Client& client, std::string_view name, A
             res = msgpack::unpack(body.data(), body.size())->convert();
         }
         co_return std::move(res);
+    } else {
+        co_return nullptr;
     }
 }
 
