@@ -15,7 +15,7 @@ struct Client::impl {
     asyncio::Event<> ev;
     GrowableBuffer write_buffer;
     std::unordered_map<Message::ID, Message> cache;
-    std::unordered_map<Message::ID, asyncio::Event<bool>*> waits;
+    std::unordered_map<Message::ID, asyncio::Event<bool>> waits;
     std::optional<asyncio::Task<>> read_task { std::nullopt };
     std::optional<asyncio::Task<>> write_task { std::nullopt };
 
@@ -58,7 +58,7 @@ struct Client::impl {
         cache[id] = std::move(msg);
         if (waits.contains(id)) {
             SPDLOG_DEBUG("wake up coroutine to consume message {}", id);
-            waits[id]->set();
+            waits[id].set();
         }
     }
 
@@ -83,9 +83,9 @@ struct Client::impl {
             }
         }
         // notify all coroutine that are waiting for message
-        for (auto [_, ev] : waits) {
-            if (!ev->is_set()) {
-                ev->set(true);
+        for (auto& [_, ev] : waits) {
+            if (!ev.is_set()) {
+                ev.set(true);
             }
         }
         SPDLOG_INFO("stop read task for fd", sock.fd());
@@ -168,8 +168,9 @@ asyncio::Task<Message, std::nullptr_t> Client::call(std::string_view name, std::
     auto id = _pimpl->send_request(name, data);
     if (!_pimpl->cache.contains(id)) {
         SPDLOG_DEBUG("wait for message {}", id);
-        asyncio::Event<bool> ev;
-        _pimpl->waits[id] = &ev;
+        auto [pair, success] = _pimpl->waits.insert({ id, {} });
+        assert(success && "id conflict");
+        auto& [id, ev] = *pair;
         auto terminated = co_await ev.wait();
         _pimpl->waits.erase(id);
         if (terminated && *terminated) {
