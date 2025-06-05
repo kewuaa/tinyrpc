@@ -125,22 +125,19 @@ asyncio::Task<R, const char*> call_func(Client& client, std::string_view name, A
             msgpack::pack(buf, args_);
         }
     }
-    auto resp = co_await client.call(name, data.read_all());
-    if (!resp) {
-        co_return "connection maybe closed";
-    }
-    auto body = resp->body();
-    if constexpr (!std::is_void_v<R>) {
-        R res;
-        if constexpr (concepts::ProtoType<R>) {
-            res.ParseFromArray(body.data(), body.size());
-        } else {
-            res = msgpack::unpack(body.data(), body.size())->convert();
+    co_return (co_await client.call(name, data.read_all()))
+    .transform([](Message&& msg) -> R {
+        auto body = msg.body();
+        if constexpr (!std::is_void_v<R>) {
+            R res;
+            if constexpr (concepts::ProtoType<R>) {
+                res.ParseFromArray(body.data(), body.size());
+            } else {
+                res = msgpack::unpack(body.data(), body.size())->convert();
+            }
+            return res;
         }
-        co_return std::move(res);
-    } else {
-        co_return nullptr;
-    }
+    });
 }
 
 TINYRPC_NS_END
