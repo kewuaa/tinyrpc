@@ -8,6 +8,11 @@
 
 TINYRPC_NS_BEGIN()
 
+enum class RPCError {
+    ConnectionClosed,
+    FunctionNotFound,
+};
+
 class TINYRPC_EXPORT Client {
 public:
     Client() noexcept;
@@ -17,7 +22,7 @@ public:
     Client& operator=(Client&) = delete;
     Client& operator=(Client&&) noexcept;
     asyncio::Task<bool> connect(const char* host, short port) noexcept;
-    asyncio::Task<Message, const char*> call(std::string_view name, std::string_view data) noexcept;
+    asyncio::Task<Message, RPCError> call(std::string_view name, std::string_view data) noexcept;
 private:
     struct impl;
     impl* _pimpl;

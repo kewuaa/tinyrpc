@@ -71,6 +71,11 @@ struct Parser::impl {
                 case State::Name: {
                     for (; pos < size; ++pos) {
                         if (msg.fill_func_name(data[pos])) {
+                            if (msg.func_name().empty()) {
+                                SPDLOG_DEBUG("empty function name");
+                                trigger_handle();
+                                break;
+                            }
                             state = State::Size;
                             SPDLOG_DEBUG("function name: {}", msg.func_name());
                             break;

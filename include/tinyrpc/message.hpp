@@ -20,7 +20,7 @@ public:
     bool fill_body(char c) noexcept;
 
     inline auto id() const noexcept { return *(ID*)(_data.data()+_id_pos); }
-    inline auto func_name() const noexcept { return (const char*)(_data.data()+_name_pos); }
+    inline std::string_view func_name() const noexcept { return (const char*)(_data.data()+_name_pos); }
     inline auto& body_size() const noexcept { return *(size_t*)(_data.data()+_size_pos); }
     inline auto body() const noexcept { return std::string_view(_data.begin()+_body_pos, _data.end()); }
     inline auto header() const noexcept { return std::string_view(_data.data(), _body_pos); }

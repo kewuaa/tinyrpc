@@ -164,7 +164,7 @@ asyncio::Task<bool> Client::connect(const char* host, short port) noexcept{
     return _pimpl->connect(host, port);
 }
 
-asyncio::Task<Message, const char*> Client::call(std::string_view name, std::string_view data) noexcept {
+asyncio::Task<Message, RPCError> Client::call(std::string_view name, std::string_view data) noexcept {
     auto id = _pimpl->send_request(name, data);
     if (!_pimpl->cache.contains(id)) {
         SPDLOG_DEBUG("wait for message {}", id);
@@ -174,12 +174,16 @@ asyncio::Task<Message, const char*> Client::call(std::string_view name, std::str
         auto terminated = co_await ev.wait();
         _pimpl->waits.erase(id);
         if (terminated && *terminated) {
-            co_return "connection maybe closed";
+            co_return RPCError::ConnectionClosed;
         }
     }
     auto resp = std::move(_pimpl->cache[id]);
     _pimpl->cache.erase(id);
-    co_return std::move(resp);
+    if (resp.func_name().empty()) {
+        co_return RPCError::FunctionNotFound;
+    } else {
+        co_return std::move(resp);
+    }
 }
 
 TINYRPC_NS_END

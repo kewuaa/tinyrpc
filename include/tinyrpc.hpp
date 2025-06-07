@@ -113,7 +113,7 @@ void register_func(Server& server, const std::string& name, F&& func) noexcept {
 
 
 template<typename R, typename... Args>
-asyncio::Task<R, const char*> call_func(Client& client, std::string_view name, Args&&... args) {
+asyncio::Task<R, RPCError> call_func(Client& client, std::string_view name, Args&&... args) {
     GrowableBuffer data;
     WrappedBuffer buf(data);
     if constexpr (sizeof...(Args) > 0) {

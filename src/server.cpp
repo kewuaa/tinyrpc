@@ -68,13 +68,26 @@ struct Server::impl {
     asyncio::Task<> handle_message(Message msg, GrowableBuffer& write_buffer, asyncio::Event<bool>& ev) noexcept {
         auto view = write_buffer.malloc(msg.header().size());
         auto size = write_buffer.readable_bytes();
-        if (funcs.contains(msg.func_name())) {
-            funcs[msg.func_name()](std::move(msg), write_buffer);
-        } else if (afuncs.contains(msg.func_name())) {
-            co_await afuncs[msg.func_name()](std::move(msg), write_buffer);
+        bool func_found = true;
+        std::string func_name { msg.func_name() };
+        if (funcs.contains(func_name)) {
+            funcs[func_name](std::move(msg), write_buffer);
+        } else if (afuncs.contains(func_name)) {
+            co_await afuncs[func_name](std::move(msg), write_buffer);
+        } else {
+            func_found = false;
+            SPDLOG_INFO("function {} not registered yet", func_name);
         }
-        msg.body_size() = write_buffer.readable_bytes() - size;
-        std::copy(msg.header().begin(), msg.header().end(), view.data());
+        if (func_found) {
+            msg.body_size() = write_buffer.readable_bytes() - size;
+            std::copy(msg.header().begin(), msg.header().end(), view.data());
+        } else {
+            auto id = msg.id();
+            write_buffer.backup(view.size());
+            write_buffer.write({ (const char*)&VERIFY_FLAG, sizeof(VERIFY_FLAG) });
+            write_buffer.write({ (const char*)&id, sizeof(id) });
+            write_buffer.write('\0');
+        }
         if (!ev.is_set()) {
             ev.set();
         }
