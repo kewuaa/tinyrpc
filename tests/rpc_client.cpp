@@ -27,8 +27,17 @@ ASYNCIO_NS::Task<> add() {
     std::cout << *value << std::endl;
     co_await TINYRPC_NS::call_func<void>(c, "async_hello_to", name);
     auto res = co_await TINYRPC_NS::call_func<void>(c, "test_no_exist_func");
-    if (!res && res.error() == TINYRPC_NS::RPCError::FunctionNotFound) {
-        std::cout << "function not found" << std::endl;
+    if (!res) {
+        switch (res.error()) {
+            case TINYRPC_NS::RPCError::ConnectionClosed: {
+                std::cout << "connection closed" << std::endl;
+                break;
+            }
+            case TINYRPC_NS::RPCError::FunctionNotFound: {
+                std::cout << "function not found" << std::endl;
+                break;
+            }
+        }
     }
 }
 

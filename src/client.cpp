@@ -47,6 +47,7 @@ struct Client::impl {
         read_task = read_forever();
         if (write_task) {
             write_task->cancel();
+            write_buffer = {};
         }
         write_task = write_forever();
         co_return true;
@@ -90,6 +91,9 @@ struct Client::impl {
         }
         SPDLOG_INFO("stop read task for fd", sock.fd());
         read_task.reset();
+        write_task->cancel();
+        write_task.reset();
+        write_buffer = {};
     }
 
     asyncio::Task<> write_forever() noexcept {
@@ -116,6 +120,7 @@ struct Client::impl {
             );
         }
         write_task.reset();
+        write_buffer = {};
     }
 
     Message::ID send_request(std::string_view name, std::string_view body) noexcept {
@@ -165,6 +170,9 @@ asyncio::Task<bool> Client::connect(const char* host, short port) noexcept{
 }
 
 asyncio::Task<Message, RPCError> Client::call(std::string_view name, std::string_view data) noexcept {
+    if (!_pimpl->write_task) {
+        co_return RPCError::ConnectionClosed;
+    }
     auto id = _pimpl->send_request(name, data);
     if (!_pimpl->cache.contains(id)) {
         SPDLOG_DEBUG("wait for message {}", id);
