@@ -23,13 +23,6 @@ if (NOT DEFINED BUILD_SHARED_LIBS)
     set(BUILD_SHARED_LIBS TRUE)
 endif()
 
-if (CMAKE_BUILD_TYPE STREQUAL Debug)
-    add_compile_definitions(
-        _DEBUG
-        SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
-    )
-endif()
-
 if (BUILD_TESTS)
     set(TINYRPC_ENABLE_PROTOBUF TRUE)
 endif()
@@ -115,18 +108,34 @@ target_link_libraries(
 )
 
 if (TINYRPC_ENABLE_PROTOBUF)
-    add_compile_definitions(TINYRPC_ENABLE_PROTOBUF)
+    target_compile_definitions(${PROJECT_NAME}_server PUBLIC TINYRPC_ENABLE_PROTOBUF)
     target_link_libraries(
         ${PROJECT_NAME}_server
         PUBLIC
             protobuf::libprotoc
             protobuf::libprotobuf
     )
+    target_compile_definitions(${PROJECT_NAME}_client PUBLIC TINYRPC_ENABLE_PROTOBUF)
     target_link_libraries(
         ${PROJECT_NAME}_client
         PUBLIC
             protobuf::libprotoc
             protobuf::libprotobuf
+    )
+endif()
+
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+    target_compile_definitions(
+        ${PROJECT_NAME}_server
+        PUBLIC
+            _DEBUG
+            SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
+    )
+    target_compile_definitions(
+        ${PROJECT_NAME}_client
+        PUBLIC
+            _DEBUG
+            SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
     )
 endif()
 
