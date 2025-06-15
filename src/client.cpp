@@ -14,8 +14,7 @@ struct Client::impl {
     asyncio::Socket sock;
     asyncio::Event<> ev;
     GrowableBuffer write_buffer;
-    std::unordered_map<Message::ID, Message> cache;
-    std::unordered_map<Message::ID, asyncio::Event<bool>> waits;
+    std::unordered_map<Message::ID, asyncio::Event<Message>> waits;
     std::optional<asyncio::Task<>> read_task { std::nullopt };
     std::optional<asyncio::Task<>> write_task { std::nullopt };
 
@@ -55,11 +54,11 @@ struct Client::impl {
 
     void handle_message(Message&& msg) noexcept {
         auto id = msg.id();
-        SPDLOG_DEBUG("save message {} to cache", id);
-        cache[id] = std::move(msg);
         if (waits.contains(id)) {
             SPDLOG_DEBUG("wake up coroutine to consume message {}", id);
-            waits[id].set();
+            waits[id].set(std::move(msg));
+        } else [[unlikely]] {
+            SPDLOG_WARN("seems that no coroutine waiting for message {}", id);
         }
     }
 
@@ -86,7 +85,7 @@ struct Client::impl {
         // notify all coroutine that are waiting for message
         for (auto& [_, ev] : waits) {
             if (!ev.is_set()) {
-                ev.set(true);
+                ev.set();
             }
         }
         SPDLOG_INFO("stop read task for fd", sock.fd());
@@ -174,23 +173,19 @@ asyncio::Task<Message, RPCError> Client::call(std::string_view name, std::string
         co_return RPCError::ConnectionClosed;
     }
     auto id = _pimpl->send_request(name, data);
-    if (!_pimpl->cache.contains(id)) {
-        SPDLOG_DEBUG("wait for message {}", id);
-        auto [pair, success] = _pimpl->waits.insert({ id, {} });
-        assert(success && "id conflict");
-        auto& [id, ev] = *pair;
-        auto terminated = co_await ev.wait();
-        _pimpl->waits.erase(id);
-        if (terminated && *terminated) {
-            co_return RPCError::ConnectionClosed;
-        }
+    SPDLOG_DEBUG("wait for message {}", id);
+    auto [pair, success] = _pimpl->waits.insert({ id, {} });
+    assert(success && "id conflict");
+    auto& [_, ev] = *pair;
+    auto msg = co_await ev.wait();
+    _pimpl->waits.erase(id);
+    if (!msg) {
+        co_return RPCError::ConnectionClosed;
     }
-    auto resp = std::move(_pimpl->cache[id]);
-    _pimpl->cache.erase(id);
-    if (resp.func_name().empty()) {
+    if (msg->func_name().empty()) {
         co_return RPCError::FunctionNotFound;
     } else {
-        co_return std::move(resp);
+        co_return std::move(*msg);
     }
 }
 
