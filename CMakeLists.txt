@@ -125,18 +125,8 @@ if (TINYRPC_ENABLE_PROTOBUF)
 endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-    target_compile_definitions(
-        ${PROJECT_NAME}_server
-        PUBLIC
-            _DEBUG
-            SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
-    )
-    target_compile_definitions(
-        ${PROJECT_NAME}_client
-        PUBLIC
-            _DEBUG
-            SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
-    )
+    target_compile_definitions(${PROJECT_NAME}_server PRIVATE _DEBUG)
+    target_compile_definitions(${PROJECT_NAME}_client PRIVATE _DEBUG)
 endif()
 
 if (BUILD_TESTS)

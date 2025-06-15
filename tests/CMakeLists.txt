@@ -29,3 +29,8 @@ target_link_libraries(
     PRIVATE
         ${PROJECT_NAME}::client
 )
+
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+    target_compile_definitions(test_rpc_server PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
+    target_compile_definitions(test_rpc_client PRIVATE SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG)
+endif()
