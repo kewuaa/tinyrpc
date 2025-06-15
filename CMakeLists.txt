@@ -10,7 +10,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 set(BUILD_TESTS CACHE BOOL ON "if to build tests")
 
-set(TINYRPC_ENABLE_PROTOBUF TRUE CACHE BOOL "if to enable protobuf")
+set(TINYRPC_ENABLE_PROTOBUF FALSE CACHE BOOL "if to enable protobuf")
 set(TINYRPC_DEFAULT_BUFFER_SIZE 1024 CACHE STRING "default buffer size")
 set(TINYRPC_VERIFY_FLAG "0xabab" CACHE STRING "verify flag for message")
 set(TINYRPC_THREAD_POOL_SIZE 4 CACHE STRING "thread pool size")
@@ -28,6 +28,10 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
         _DEBUG
         SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
     )
+endif()
+
+if (BUILD_TESTS)
+    set(TINYRPC_ENABLE_PROTOBUF TRUE)
 endif()
 
 include(cmake/CPM.cmake)
