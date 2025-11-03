@@ -30,10 +30,14 @@ endif()
 include(cmake/CPM.cmake)
 include(GenerateExportHeader)
 
-find_package(spdlog REQUIRED)
 if (TINYRPC_ENABLE_PROTOBUF)
     find_package(protobuf REQUIRED)
 endif()
+
+CPMAddPackage(
+    URI "gh:gabime/spdlog@1.16.0"
+    OPTIONS "SPDLOG_USE_STD_FORMAT TRUE"
+)
 
 CPMAddPackage(
     NAME asyncio
