@@ -1,0 +1,6 @@
+[submodule "growable_buffer"]
+	path = growable_buffer
+	url = https://github.com/kewuaa/growable_buffer.git
+[submodule "asyncio"]
+	path = asyncio
+	url = https://github.com/kewuaa/asyncio.git

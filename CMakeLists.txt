@@ -34,22 +34,12 @@ if (TINYRPC_ENABLE_PROTOBUF)
     find_package(protobuf REQUIRED)
 endif()
 
+add_subdirectory(asyncio)
+add_subdirectory(growable_buffer)
+
 CPMAddPackage(
     URI "gh:gabime/spdlog@1.16.0"
     OPTIONS "SPDLOG_USE_STD_FORMAT TRUE"
-)
-
-CPMAddPackage(
-    NAME asyncio
-    GIT_REPOSITORY "https://github.com/kewuaa/asyncio.git"
-    GIT_TAG master
-    OPTIONS "BUILD_TESTS OFF"
-)
-CPMAddPackage(
-    NAME growable_buffer
-    GIT_REPOSITORY "https://github.com/kewuaa/growable_buffer.git"
-    GIT_TAG master
-    OPTIONS "BUILD_TESTS OFF"
 )
 CPMAddPackage("gh:msgpack/msgpack-c#cpp-7.0.0")
 
